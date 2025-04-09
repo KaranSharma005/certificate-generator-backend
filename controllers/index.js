@@ -3,6 +3,7 @@ const xlsx = require('xlsx');
 const PizZip = require('pizzip');
 const fs = require('fs');
 const Docxtemplater = require("docxtemplater");
+const convertPdf = require('docx-pdf');
 
 const generateCertificates = async (req, res) => {
     const io = req.app.get('io');
@@ -33,21 +34,30 @@ const generateCertificates = async (req, res) => {
             const zip = new PizZip(wordData);
             const document = new Docxtemplater(zip);
 
-            document.render({
-                Name: user.Name,
-                RollNo: user.RollNo,
-                RegNo: user.RegNo,
-                School: user.School,
-            });
+            document.render(user);
 
             const buf = document.getZip().generate({ type: 'nodebuffer' });
             const fileName = `${user.Name}${Date.now()}.docx`;
+            const pdfFileName = `${user.RollNo}${Date.now()}.pdf`;
             const filePath = path.join('./certificates', fileName);
+            const pdfPath = path.join('./certificates', pdfFileName);
             fs.writeFileSync(filePath, buf);
+
+            await new Promise((resolve, reject) => {
+                convertPdf(filePath, pdfPath, (err, result) => {
+                    if (err) {
+                        reject(err);
+                    } else {
+                        resolve(result);
+                    }
+                });
+            });
+
+            fs.unlinkSync(filePath);
 
             io.to(socketId).emit('certificate-progress', {
                 name:user.Name,
-                url:`http://localhost:3000/certificates/${fileName}`
+                url:`http://localhost:3000/certificates/${pdfFileName}`
             });
         }
         return res.status(200).json({ message: "Uploaded Successfully" });

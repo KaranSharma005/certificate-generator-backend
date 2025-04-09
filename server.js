@@ -7,6 +7,7 @@ const server = http.createServer(app);
 const upload = require('./middleware/upload');
 const path = require('path');
 const {generateCertificates} = require('./controllers/index');
+const rateLimit = require('express-rate-limit');
 
 require('dotenv').config();
 const PORT = process.env.PORT;
@@ -27,6 +28,17 @@ const corsOptions = {
 };
 app.use(cors(corsOptions));
 app.use(express.json());
+
+const limiter = rateLimit({
+  windowMs: 30 * 1000, 
+  max: 1, 
+  message: {
+    message: "Only 1 request allowed every 30 seconds. Please wait.",
+  },
+  standardHeaders: true, 
+  legacyHeaders: false,
+});
+
 app.use('/certificates', express.static(path.join(__dirname, 'certificates')));
 
 io.on('connection', (socket) => {
@@ -36,7 +48,7 @@ io.on('connection', (socket) => {
   })
 })
 
-app.post('/generateCertificate',upload, generateCertificates);
+app.post('/generateCertificate',limiter,upload, generateCertificates);
 
 server.listen(PORT,() => {
     console.log(`Server is running on port ${PORT}`);
