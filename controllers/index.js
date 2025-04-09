@@ -1,9 +1,6 @@
 const path = require('path');
 const xlsx = require('xlsx');
-const PizZip = require('pizzip');
-const fs = require('fs');
-const Docxtemplater = require("docxtemplater");
-const convertPdf = require('docx-pdf');
+const {handleFileGeneration} = require('../services/generatePDF')
 
 const generateCertificates = async (req, res) => {
     const io = req.app.get('io');
@@ -27,39 +24,9 @@ const generateCertificates = async (req, res) => {
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
         const jsondata = xlsx.utils.sheet_to_json(worksheet);
+        const allfields=Object.keys(jsondata[0]);
 
-        for (let i = 0; i < jsondata.length; i++) {
-            const user = jsondata[i];
-            const wordData = fs.readFileSync(wordFile.path, 'binary');
-            const zip = new PizZip(wordData);
-            const document = new Docxtemplater(zip);
-
-            document.render(user);
-
-            const buf = document.getZip().generate({ type: 'nodebuffer' });
-            const fileName = `${user.Name}${Date.now()}.docx`;
-            const pdfFileName = `${user.RollNo}${Date.now()}.pdf`;
-            const filePath = path.join('./certificates', fileName);
-            const pdfPath = path.join('./certificates', pdfFileName);
-            fs.writeFileSync(filePath, buf);
-
-            await new Promise((resolve, reject) => {
-                convertPdf(filePath, pdfPath, (err, result) => {
-                    if (err) {
-                        reject(err);
-                    } else {
-                        resolve(result);
-                    }
-                });
-            });
-
-            fs.unlinkSync(filePath);
-
-            io.to(socketId).emit('certificate-progress', {
-                name:user.Name,
-                url:`http://localhost:3000/certificates/${pdfFileName}`
-            });
-        }
+        await handleFileGeneration(jsondata,wordFile,io,allfields,socketId);
         return res.status(200).json({ message: "Uploaded Successfully" });
 
     } catch (err) {
