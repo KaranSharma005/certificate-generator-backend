@@ -19,6 +19,8 @@ const generateCertificates = async (req, res) => {
         return res.status(400).json({ error: "error", message: "Upload a valid Word template file." });
     }
 
+    const email = req.email?.email;
+    
     try {
         const workbook = xlsx.readFile(excelFile.path);
         const sheetName = workbook.SheetNames[0];

@@ -3,10 +3,12 @@ const PizZip = require('pizzip');
 const fs = require('fs');
 const Docxtemplater = require("docxtemplater");
 const convertPdf = require('docx-pdf');
+// const {user} = require('../models/userSchema');
+const libre = require('libreoffice-convert');
 
-async function convertWordToPdf(filePath,pdfPath){
-    await new Promise((resolve, reject) => {
-        convertPdf(filePath, pdfPath, (err, result) => {
+async function convertWordToPdf(buf){
+    const pdfBuf = await new Promise((resolve, reject) => {
+        libre.convert(buf, '.pdf',undefined, (err, result) => {
             if (err) {
                 reject(err);
             } else {
@@ -14,7 +16,12 @@ async function convertWordToPdf(filePath,pdfPath){
             }
         });
     });
+    return pdfBuf;
 }
+
+// async function saveFilePathToDB(path){
+    
+// }
 
 async function handleFileGeneration(jsondata,wordFile,io,allfields,socketId){
     for (let i = 0; i < jsondata.length; i++) {
@@ -40,15 +47,11 @@ async function handleFileGeneration(jsondata,wordFile,io,allfields,socketId){
         document.render(user);
 
         const buf = document.getZip().generate({ type: 'nodebuffer' });
-        const fileName = `${user.Name}${Date.now()}.docx`;
         const pdfFileName = `${user.RollNo}${Date.now()}.pdf`;
-        const filePath = path.join('./certificates', fileName);
         const pdfPath = path.join('./certificates', pdfFileName);
-        fs.writeFileSync(filePath, buf);
 
-        await convertWordToPdf(filePath,pdfPath);
-
-        fs.unlinkSync(filePath);
+        const pdfBuf = await convertWordToPdf(buf);
+        fs.writeFileSync(pdfPath,pdfBuf);
 
         io.to(socketId).emit('certificate-progress', {
             name:user.Name,

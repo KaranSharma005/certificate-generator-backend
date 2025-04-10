@@ -3,7 +3,8 @@ const mongoose = require('mongoose');
 const userSchema = new mongoose.Schema({
     email: {
         type : String,
-        required: true
+        required: true,
+        unique: true,
     },
     certificates: {
         type: Array,
@@ -11,4 +12,7 @@ const userSchema = new mongoose.Schema({
     }
 })
 
-const User = mongoose.model('User', userSchema);
+const user = mongoose.model('User', userSchema);
+module.exports = {
+    user
+}
